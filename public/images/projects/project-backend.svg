@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="be-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117" />
+      <stop offset="100%" stop-color="#080c10" />
+    </linearGradient>
+    <linearGradient id="be-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="be-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    </linearGradient>
+    <pattern id="be-grid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#10b981" stroke-width="0.5" stroke-opacity="0.08" />
+    </pattern>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#be-bg)" />
+  <rect width="100%" height="100%" fill="url(#be-grid)" />
+  <circle cx="400" cy="225" r="220" fill="url(#be-glow)" filter="blur(45px)" />
+
+  <g transform="translate(65, 45)">
+    <rect width="670" height="360" rx="14" fill="#121820" stroke="#1f2937" stroke-width="1.5" />
+    
+    <!-- Titlebar -->
+    <path d="M 0 14 Q 0 0 14 0 L 656 0 Q 670 0 670 14 L 670 40 L 0 40 Z" fill="#161f2c" />
+    <circle cx="22" cy="20" r="4.5" fill="#ef4444" opacity="0.8" />
+    <circle cx="38" cy="20" r="4.5" fill="#f59e0b" opacity="0.8" />
+    <circle cx="54" cy="20" r="4.5" fill="#10b981" opacity="0.8" />
+    <text x="75" y="24" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="11">backend-services // spring-boot-cluster</text>
+    <text x="540" y="24" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="10">TPS: 3,420</text>
+
+    <!-- Microservices Pipeline Topology -->
+    <!-- Client Ingress -->
+    <rect x="30" y="150" width="90" height="60" rx="8" fill="#1a2332" stroke="#2b3b50" stroke-width="1.2" />
+    <text x="45" y="176" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">CLIENT</text>
+    <text x="45" y="194" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9">HTTP/2</text>
+
+    <!-- Connector 1 -->
+    <line x1="120" y1="180" x2="160" y2="180" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 2" />
+
+    <!-- API Gateway -->
+    <rect x="160" y="130" width="110" height="100" rx="8" fill="#1a2332" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="175" y="165" fill="#f8fafc" font-family="'Space Grotesk', sans-serif" font-size="12" font-weight="600">API Gateway</text>
+    <text x="175" y="184" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="9">Rate Limiter</text>
+    <text x="175" y="200" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9">JWT Auth Guard</text>
+
+    <!-- Split Branches -->
+    <path d="M 270 180 L 320 180 L 320 100 L 350 100" fill="none" stroke="#10b981" stroke-width="2" stroke-dasharray="4 2" />
+    <path d="M 270 180 L 350 180" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="4 2" />
+    <path d="M 270 180 L 320 180 L 320 260 L 350 260" fill="none" stroke="#818cf8" stroke-width="2" stroke-dasharray="4 2" />
+
+    <!-- Service A: Spring Boot -->
+    <rect x="350" y="70" width="130" height="60" rx="8" fill="#1a2332" stroke="#10b981" stroke-width="1.2" />
+    <text x="365" y="96" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">User Service</text>
+    <text x="365" y="114" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9">Spring Boot / Java</text>
+
+    <!-- Service B: Order Processor -->
+    <rect x="350" y="150" width="130" height="60" rx="8" fill="#1a2332" stroke="#38bdf8" stroke-width="1.2" />
+    <text x="365" y="176" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">Core Engine</text>
+    <text x="365" y="194" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9">REST / Async worker</text>
+
+    <!-- Service C: Event Bus -->
+    <rect x="350" y="230" width="130" height="60" rx="8" fill="#1a2332" stroke="#818cf8" stroke-width="1.2" />
+    <text x="365" y="256" fill="#818cf8" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="600">Notification</text>
+    <text x="365" y="274" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="9">Message Queue</text>
+
+    <!-- Join to Database -->
+    <path d="M 480 100 L 515 100 L 515 180 L 540 180" fill="none" stroke="#10b981" stroke-width="2" />
+    <path d="M 480 180 L 540 180" fill="none" stroke="#38bdf8" stroke-width="2" />
+    <path d="M 480 260 L 515 260 L 515 180 L 540 180" fill="none" stroke="#818cf8" stroke-width="2" />
+
+    <!-- Storage Cylinder / DB -->
+    <g transform="translate(540, 140)">
+      <rect x="0" y="12" width="95" height="56" fill="#1a2332" stroke="#10b981" stroke-width="1.5" />
+      <ellipse cx="47.5" cy="12" rx="47.5" ry="12" fill="#222f42" stroke="#10b981" stroke-width="1.5" />
+      <ellipse cx="47.5" cy="68" rx="47.5" ry="12" fill="#1a2332" stroke="#10b981" stroke-width="1.5" />
+      <text x="24" y="45" fill="#f8fafc" font-family="'Space Grotesk', sans-serif" font-size="12" font-weight="600">PostgreSQL</text>
+      <text x="24" y="58" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="8">Replica Active</text>
+    </g>
+
+    <!-- Bottom Metrics Strip -->
+    <rect x="30" y="308" width="605" height="36" rx="6" fill="#0e141c" stroke="#1f2937" stroke-width="1" />
+    <text x="45" y="330" fill="#64748b" font-family="'JetBrains Mono', monospace" font-size="10">Pool: 20 conns</text>
+    <text x="170" y="330" fill="#10b981" font-family="'JetBrains Mono', monospace" font-size="10">Uptime: 99.99%</text>
+    <text x="310" y="330" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="10">Health: ALL_HEALTHY</text>
+    <text x="490" y="330" fill="#f59e0b" font-family="'JetBrains Mono', monospace" font-size="10">GC Pause: 1.8ms</text>
+  </g>
+</svg>
