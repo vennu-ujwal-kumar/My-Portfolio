@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { personal } from "@/data/portfolio";
+import { fetchGlobalConfig } from "./profile-config";
 
 const RESUME_KEY = "ujv-custom-resume";
 const RESUME_NAME_KEY = "ujv-custom-resume-name";
@@ -52,13 +53,44 @@ export function useResume() {
     return getStoredResumeName() || (personal.resumeUrl ? "resume.pdf" : null);
   });
 
+  // 1. Listen for local storage updates
   useEffect(() => {
     const handleUpdate = () => {
-      setResumeUrl(getStoredResume() || personal.resumeUrl);
-      setFileName(getStoredResumeName() || (personal.resumeUrl ? "resume.pdf" : null));
+      const stored = getStoredResume();
+      if (stored) {
+        setResumeUrl(stored);
+        setFileName(getStoredResumeName() || "Custom Resume");
+      } else {
+        // Fall back to global config if local cleared
+        fetchGlobalConfig().then((cfg) => {
+          if (cfg?.resumeUrl) {
+            setResumeUrl(cfg.resumeUrl);
+            setFileName("Global Resume (Synced across all devices)");
+          } else {
+            setResumeUrl(personal.resumeUrl);
+            setFileName(personal.resumeUrl ? "resume.pdf" : null);
+          }
+        });
+      }
     };
     window.addEventListener("resume-updated", handleUpdate);
     return () => window.removeEventListener("resume-updated", handleUpdate);
+  }, []);
+
+  // 2. Fetch global config on mount so ALL devices get the live resume!
+  useEffect(() => {
+    let active = true;
+    fetchGlobalConfig().then((cfg) => {
+      if (!active) return;
+      const local = getStoredResume();
+      if (!local && cfg?.resumeUrl) {
+        setResumeUrl(cfg.resumeUrl);
+        setFileName("Global Resume (Synced across all devices)");
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return {

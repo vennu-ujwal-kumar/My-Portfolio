@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import defaultPhoto from "@/assets/ujwal.jpg.asset.json";
+import { fetchGlobalConfig } from "./profile-config";
 
 const PHOTO_KEY = "ujv-custom-photo";
 const PHOTO_NAME_KEY = "ujv-custom-photo-name";
@@ -91,15 +92,49 @@ export function useProfilePhoto() {
     return !!getStoredPhoto();
   });
 
+  // 1. Listen for local photo updates
   useEffect(() => {
     const handleUpdate = () => {
       const stored = getStoredPhoto();
-      setPhotoUrl(stored || defaultPhoto.url);
-      setPhotoName(getStoredPhotoName() || (stored ? "Custom Photo" : "Default Photo (ujwal.jpg)"));
-      setIsCustom(!!stored);
+      if (stored) {
+        setPhotoUrl(stored);
+        setPhotoName(getStoredPhotoName() || "Custom Photo");
+        setIsCustom(true);
+      } else {
+        // Check global config if local is removed
+        fetchGlobalConfig().then((cfg) => {
+          if (cfg?.photoUrl) {
+            setPhotoUrl(cfg.photoUrl);
+            setPhotoName("Global Photo (Synced across all devices)");
+            setIsCustom(true);
+          } else {
+            setPhotoUrl(defaultPhoto.url);
+            setPhotoName("Default Photo (ujwal.jpg)");
+            setIsCustom(false);
+          }
+        });
+      }
     };
     window.addEventListener("photo-updated", handleUpdate);
     return () => window.removeEventListener("photo-updated", handleUpdate);
+  }, []);
+
+  // 2. Fetch global config on mount so ALL devices see the updated photo!
+  useEffect(() => {
+    let active = true;
+    fetchGlobalConfig().then((cfg) => {
+      if (!active) return;
+      const local = getStoredPhoto();
+      // If no local override, apply the global photo from GitHub
+      if (!local && cfg?.photoUrl) {
+        setPhotoUrl(cfg.photoUrl);
+        setPhotoName("Global Photo (Synced across all devices)");
+        setIsCustom(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return {

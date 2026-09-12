@@ -1,8 +1,10 @@
 import {
   Camera,
   Check,
+  ExternalLink,
   Eye,
   FileText,
+  Globe,
   Image as ImageIcon,
   KeyRound,
   Lock,
@@ -19,6 +21,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  GITHUB_EDIT_CONFIG_URL,
+  getStoredGitHubToken,
+  syncConfigToGitHub,
+} from "@/lib/profile-config";
 import { processImageFile, useProfilePhoto } from "@/lib/profile-photo";
 import { useResume } from "@/lib/resume";
 import { cn } from "@/lib/utils";
@@ -30,7 +37,7 @@ const AUTH_SESSION_KEY = "ujv-admin-authenticated";
 export function AdminPortal({
   open,
   onOpenChange,
-  initialSection = "resume",
+  initialSection = "photo",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,16 +53,23 @@ export function AdminPortal({
   // Section: Resume or Photo
   const [managerSection, setManagerSection] = useState<"resume" | "photo">(initialSection);
 
-  // Resume state
+  // Resume inputs
   const [cloudUrl, setCloudUrl] = useState("");
   const [resumeSuccess, setResumeSuccess] = useState(false);
   const [resumeTab, setResumeTab] = useState<"upload" | "link">("upload");
 
-  // Photo state
+  // Photo inputs
   const [cloudPhotoUrl, setCloudPhotoUrl] = useState("");
   const [photoSuccess, setPhotoSuccess] = useState(false);
   const [photoTab, setPhotoTab] = useState<"upload" | "link">("upload");
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+
+  // GitHub token sync state
+  const [ghToken, setGhToken] = useState(() => getStoredGitHubToken() || "");
+  const [isSyncingGh, setIsSyncingGh] = useState(false);
+  const [ghSyncMsg, setGhSyncMsg] = useState<{ type: "success" | "error"; text: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -67,6 +81,7 @@ export function AdminPortal({
   useEffect(() => {
     if (open) {
       setManagerSection(initialSection);
+      setGhSyncMsg(null);
     }
   }, [open, initialSection]);
 
@@ -91,13 +106,13 @@ export function AdminPortal({
     }
   };
 
-  // Resume Upload
+  // Resume file upload
   const handleResumeFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.type !== "application/pdf") {
-      alert("Please upload a PDF file.");
+      alert("Please upload a valid PDF file.");
       return;
     }
 
@@ -106,12 +121,13 @@ export function AdminPortal({
       const dataUrl = reader.result as string;
       updateResume(dataUrl, file.name);
       setResumeSuccess(true);
-      setTimeout(() => setResumeSuccess(false), 3000);
+      setTimeout(() => setResumeSuccess(false), 3500);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveResumeCloudUrl = (e: React.FormEvent) => {
+  // Resume cloud link save
+  const handleSaveResumeCloudUrl = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cloudUrl.trim()) return;
 
@@ -124,28 +140,43 @@ export function AdminPortal({
     }
 
     updateResume(finalUrl, "Cloud Resume (Google Drive / Online)");
+
+    // If GitHub token is present, automatically sync to GitHub globally!
+    if (ghToken.trim()) {
+      setIsSyncingGh(true);
+      const res = await syncConfigToGitHub(ghToken.trim(), { resumeUrl: finalUrl });
+      setIsSyncingGh(false);
+      if (res.success) {
+        setGhSyncMsg({
+          type: "success",
+          text: "Synced to GitHub! All devices worldwide will now see your updated resume.",
+        });
+      } else {
+        setGhSyncMsg({ type: "error", text: res.error || "Failed to push to GitHub." });
+      }
+    }
+
     setCloudUrl("");
     setResumeSuccess(true);
-    setTimeout(() => setResumeSuccess(false), 3000);
+    setTimeout(() => setResumeSuccess(false), 3500);
   };
 
-  // Photo Upload
+  // Photo file upload
   const handlePhotoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file (JPG, PNG, WebP).");
+      alert("Please select an image file (JPG, PNG, WebP).");
       return;
     }
 
     try {
       setIsProcessingPhoto(true);
-      // Auto-compress and scale image via canvas to ensure fast load & browser storage fit
       const optimizedDataUrl = await processImageFile(file, 1200, 0.88);
       updatePhoto(optimizedDataUrl, file.name);
       setPhotoSuccess(true);
-      setTimeout(() => setPhotoSuccess(false), 3000);
+      setTimeout(() => setPhotoSuccess(false), 3500);
     } catch (err) {
       console.error("Failed to process photo", err);
       alert("Could not process this image. Please try another one.");
@@ -154,23 +185,32 @@ export function AdminPortal({
     }
   };
 
-  const handleSaveCloudPhotoUrl = (e: React.FormEvent) => {
+  // Photo cloud link save
+  const handleSaveCloudPhotoUrl = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cloudPhotoUrl.trim()) return;
 
-    let finalUrl = cloudPhotoUrl.trim();
-    // Normalize Google Drive image link to high-res direct thumbnail
-    if (finalUrl.includes("drive.google.com/file/d/")) {
-      const match = finalUrl.match(/\/d\/([^/]+)/);
-      if (match && match[1]) {
-        finalUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
+    const finalUrl = cloudPhotoUrl.trim();
+    updatePhoto(finalUrl, "Cloud Profile Photo");
+
+    // If GitHub token is present, automatically sync to GitHub globally!
+    if (ghToken.trim()) {
+      setIsSyncingGh(true);
+      const res = await syncConfigToGitHub(ghToken.trim(), { photoUrl: finalUrl });
+      setIsSyncingGh(false);
+      if (res.success) {
+        setGhSyncMsg({
+          type: "success",
+          text: "Synced to GitHub! All devices worldwide will now see your new photo.",
+        });
+      } else {
+        setGhSyncMsg({ type: "error", text: res.error || "Failed to push to GitHub." });
       }
     }
 
-    updatePhoto(finalUrl, "Cloud Profile Photo");
     setCloudPhotoUrl("");
     setPhotoSuccess(true);
-    setTimeout(() => setPhotoSuccess(false), 3000);
+    setTimeout(() => setPhotoSuccess(false), 3500);
   };
 
   return (
@@ -331,7 +371,7 @@ export function AdminPortal({
                 {photoSuccess && (
                   <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 font-mono text-xs text-emerald-400">
                     <Check className="h-4 w-4" />
-                    Profile photo updated successfully! The Hero portrait has been refreshed.
+                    Profile photo updated successfully in this browser!
                   </div>
                 )}
 
@@ -387,34 +427,51 @@ export function AdminPortal({
                     <form onSubmit={handleSaveCloudPhotoUrl} className="space-y-3">
                       <div>
                         <label className="font-mono text-xs text-muted-foreground block mb-1.5">
-                          Paste Image URL (Google Drive, Imgur, Cloudinary, etc.)
+                          Paste Direct Image URL
                         </label>
                         <input
                           type="url"
                           value={cloudPhotoUrl}
                           onChange={(e) => setCloudPhotoUrl(e.target.value)}
-                          placeholder="https://drive.google.com/file/d/... or https://..."
+                          placeholder="https://i.ibb.co/... or https://..."
                           className="w-full rounded-xl border border-border bg-card px-4 py-2 text-sm text-foreground outline-none transition focus:border-primary"
                         />
-                        <p className="mt-1.5 font-mono text-[10px] text-subtle leading-relaxed">
-                          💡 Tip: If using Google Drive, share the photo with &quot;Anyone with the link&quot;. It will automatically be converted to a direct high-res image stream.
-                        </p>
+                        <div className="mt-2 rounded-xl bg-surface-2 p-3 text-[11px] font-mono text-subtle space-y-1.5">
+                          <p className="text-amber-400/90 font-medium">
+                            ⚠️ Why Google Drive links fail for images:
+                          </p>
+                          <p className="text-muted-foreground leading-relaxed">
+                            Google Drive blocks external website image embedding. For photos that work 100% of the time on every phone and computer, upload to{" "}
+                            <a
+                              href="https://imgbb.com"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary underline"
+                            >
+                              ImgBB.com
+                            </a>{" "}
+                            or{" "}
+                            <a
+                              href="https://postimages.org"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary underline"
+                            >
+                              Postimages.org
+                            </a>{" "}
+                            (free, 5 sec upload) and paste the <strong>Direct link</strong> ending in .jpg/.png!
+                          </p>
+                        </div>
                       </div>
                       <button
                         type="submit"
                         disabled={!cloudPhotoUrl.trim()}
                         className="rounded-xl bg-primary px-5 py-2 font-medium text-xs text-primary-foreground transition hover:opacity-90 disabled:opacity-40 cursor-pointer"
                       >
-                        Set Cloud Profile Photo
+                        Set Profile Photo
                       </button>
                     </form>
                   )}
-
-                  <div className="mt-4 pt-3 border-t border-border">
-                    <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
-                      💡 <strong>Git Fallback:</strong> You can also replace <code className="text-foreground">public/images/ujwal.jpg</code> directly in your GitHub repo for a permanent default across all devices.
-                    </p>
-                  </div>
                 </div>
               </div>
             )}
@@ -520,7 +577,7 @@ export function AdminPortal({
                           Click to choose or drag & drop your resume PDF
                         </span>
                         <span className="mt-1 font-mono text-[11px] text-muted-foreground">
-                          Accepts .pdf format (stores locally in your browser storage)
+                          Accepts .pdf format
                         </span>
                         <input
                           type="file"
@@ -544,7 +601,7 @@ export function AdminPortal({
                           className="w-full rounded-xl border border-border bg-card px-4 py-2 text-sm text-foreground outline-none transition focus:border-primary"
                         />
                         <p className="mt-1.5 font-mono text-[10px] text-subtle leading-relaxed">
-                          💡 Tip: Share a Google Drive PDF link with &quot;Anyone with link can view&quot;. When you update your resume in Google Drive, your portfolio will always show the newest version automatically!
+                          💡 Tip: Share a Google Drive PDF link with &quot;Anyone with link can view&quot;. For PDFs, Google Drive links work great!
                         </p>
                       </div>
                       <button
@@ -552,7 +609,7 @@ export function AdminPortal({
                         disabled={!cloudUrl.trim()}
                         className="rounded-xl bg-primary px-5 py-2 font-medium text-xs text-primary-foreground transition hover:opacity-90 disabled:opacity-40 cursor-pointer"
                       >
-                        Save Cloud Resume Link
+                        Save Resume Link
                       </button>
                     </form>
                   )}
@@ -560,9 +617,101 @@ export function AdminPortal({
               </div>
             )}
 
+            {/* GLOBAL CROSS-DEVICE SYNC SECTION */}
+            <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Globe className="h-4 w-4 text-primary" />
+                <h4 className="font-display text-sm font-semibold text-foreground">
+                  Global Sync (All Devices Worldwide)
+                </h4>
+              </div>
+              <p className="font-mono text-xs text-muted-foreground leading-relaxed mb-3">
+                Local uploads above only update this single browser. To update your photo and resume for <strong>every recruiter, phone, and computer worldwide</strong>:
+              </p>
+
+              <div className="space-y-3">
+                {/* Method 1: 1-Click GitHub Web Edit */}
+                <div className="rounded-xl border border-border bg-surface p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <span className="font-display text-xs font-semibold text-foreground block">
+                      Option A: 1-Click Edit on GitHub (No setup needed)
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground block">
+                      Edit public/profile-config.json directly on GitHub and click Commit
+                    </span>
+                  </div>
+                  <a
+                    href={GITHUB_EDIT_CONFIG_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-foreground px-3 py-1.5 font-mono text-xs text-background font-medium hover:opacity-90 transition cursor-pointer shrink-0"
+                  >
+                    <span>Edit on GitHub</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+
+                {/* Method 2: GitHub Token Direct Sync */}
+                <div className="rounded-xl border border-border bg-surface p-3">
+                  <span className="font-display text-xs font-semibold text-foreground block mb-1">
+                    Option B: Sync via GitHub Token
+                  </span>
+                  <p className="font-mono text-[10px] text-muted-foreground mb-2">
+                    Paste a GitHub Personal Access Token (classic or fine-grained with Repo write access) to push updates from this modal directly.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={ghToken}
+                      onChange={(e) => setGhToken(e.target.value)}
+                      placeholder="ghp_xxxxxxxxxxxx"
+                      className="w-full rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-foreground outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      disabled={!ghToken.trim() || isSyncingGh}
+                      onClick={async () => {
+                        setIsSyncingGh(true);
+                        setGhSyncMsg(null);
+                        const updates: { photoUrl?: string; resumeUrl?: string } = {};
+                        if (photoUrl && isCustom) updates.photoUrl = photoUrl;
+                        if (resumeUrl) updates.resumeUrl = resumeUrl;
+                        const res = await syncConfigToGitHub(ghToken.trim(), updates);
+                        setIsSyncingGh(false);
+                        if (res.success) {
+                          setGhSyncMsg({
+                            type: "success",
+                            text: "Successfully synced to GitHub! Global config is live.",
+                          });
+                        } else {
+                          setGhSyncMsg({
+                            type: "error",
+                            text: res.error || "Failed to commit to GitHub.",
+                          });
+                        }
+                      }}
+                      className="shrink-0 rounded-lg bg-primary px-3 py-1.5 font-mono text-xs text-primary-foreground font-medium hover:opacity-90 disabled:opacity-40 cursor-pointer"
+                    >
+                      {isSyncingGh ? "Syncing…" : "Sync Now"}
+                    </button>
+                  </div>
+                  {ghSyncMsg && (
+                    <p
+                      className={cn(
+                        "mt-2 font-mono text-[11px]",
+                        ghSyncMsg.type === "success" ? "text-emerald-400" : "text-rose-400",
+                      )}
+                    >
+                      {ghSyncMsg.text}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Footer Navigation */}
             <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-xs font-mono text-muted-foreground">
-              <span>Shortcut to open: Ctrl + Shift + U</span>
+              <span>Shortcut: Ctrl + Shift + U</span>
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}

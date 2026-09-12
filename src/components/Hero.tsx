@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowRight, Camera } from "lucide-react";
 import { useProfilePhoto } from "@/lib/profile-photo";
 import { personal, quickProfile } from "@/data/portfolio";
@@ -12,7 +13,12 @@ const codeLines = [
 ];
 
 export function Hero() {
-  const { photoUrl } = useProfilePhoto();
+  const { photoUrl, defaultUrl } = useProfilePhoto();
+  const [imgSrc, setImgSrc] = useState(photoUrl);
+
+  useEffect(() => {
+    setImgSrc(photoUrl);
+  }, [photoUrl]);
 
   return (
     <section
@@ -101,11 +107,12 @@ export function Hero() {
             {/* photo */}
             <figure className="group relative mx-auto h-full w-[82%] overflow-hidden rounded-[28px] border border-glass-border bg-surface shadow-elevated">
               <img
-                src={photoUrl}
+                src={imgSrc}
                 alt="Portrait of Vennu Ujwal"
                 width={1145}
                 height={1394}
                 fetchPriority="high"
+                onError={() => setImgSrc(defaultUrl)}
                 className="h-full w-full object-cover object-top saturate-[0.95] transition-transform duration-500 group-hover:scale-[1.02]"
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
