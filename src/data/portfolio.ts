@@ -16,8 +16,7 @@ export const personal = {
   status: "Currently learning & building",
   location: "India",
   email: "vennuujwalkumar@gmail.com",
-  /** Put a PDF in /public (e.g. /resume.pdf) and set this to "/resume.pdf". */
-  resumeUrl: null as string | null,
+  resumeUrl: "/resume.pdf" as string | null,
   githubUsername: "vennu-ujwal-kumar",
 };
 
